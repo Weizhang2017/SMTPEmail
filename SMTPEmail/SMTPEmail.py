@@ -4,13 +4,13 @@ from email.headerregistry import Address
 from email.utils import make_msgid, localtime
 import smtplib
 import poplib
-
+import imaplib
+import re
 class FieldMissing(Exception):
 	def __init__(self, missing_field):
 		self.err_msg = '{} is missing'.format(missing_field)
 	def __str__(self):
 		return self.err_msg
-
 
 class Message(object):
 
@@ -67,6 +67,11 @@ class User(object):
 		self.POP3_server = kwargs.get('POP3_server')
 		self.POP3_password = kwargs.get('POP3_password')
 		self.POP3_account = kwargs.get('POP3_account')
+
+		#parameters for IMAP server
+		self.IMAP_server = kwargs.get('IMAP_server')
+		self.IMAP_password = kwargs.get('IMAP_password')
+		self.IMAP_account = kwargs.get('IMAP_account')
 		
 class SMTP(Message, User):
 
@@ -91,6 +96,7 @@ class SMTP(Message, User):
 			server.send_message(self.msg)
 		return 'Success'
 
+#retrieve messages via SSL enabled POP3
 class POP3(User):
 
 	def __init__(self, POP3_port=995, **kwargs):
@@ -122,4 +128,26 @@ class POP3(User):
 		mailbox.quit()
 		return size
 
+#retrieve messages via SSL enabled IMAP
+class IMAP(User):
+	def __init__(self, IMAP_port=993, **kwargs):
+		self.port = IMAP_port
+		super().__init__(**kwargs)
+		if not self.IMAP_server:
+			raise FieldMissing('IMAP_server')
+		if not self.IMAP_account:
+			raise FieldMissing('IMAP_account')
+		if not self.IMAP_password:
+			raise FieldMissing('IMAP_password')
 
+	def retrieve_msg(self):
+		with imaplib.IMAP4_SSL(self.IMAP_server, self.port)	as mailbox:
+			mailbox.login(self.IMAP_account, self.IMAP_password)
+			status, label = mailbox.list()
+			for ind, item in enumerate(label):
+				item = re.search(r'\"[\w\-\[\]\.\/\s\@\(\)]+\"$', item.decode()).group()
+				options[ind] = item
+				print('{0}. {1}'.format(ind, item))
+			choice = int(input('Please select mailbox label(defualt:INBOX): '))
+			status, messages = mailbox.select()
+			print(messages)
