@@ -3,6 +3,7 @@ from email.message import EmailMessage
 from email.headerregistry import Address
 from email.utils import make_msgid, localtime
 import smtplib
+import poplib
 
 class FieldMissing(Exception):
 	def __init__(self, missing_field):
@@ -53,23 +54,72 @@ class Message(object):
 	def __str__(self):
 		return str(self.msg)
 
-		
-class SMTP(Message):
+class User(object):
+	def __init__(self, **kwargs):
 
-	def __init__(self, port=25, **kwargs):
-		'''default port = 25'''
-		if not kwargs.get('SMTP_server'):
-			raise FieldMissing('SMTP_server')
+		#parameters for SMTP server
+		self.SMTP_server = kwargs.get('SMTP_server')
 		self.SMTP_account = kwargs.get('SMTP_account')
-		self.password = kwargs.get('password')
-		self.SMTP_server = kwargs['SMTP_server']
-		self.port = port
+		self.SMTP_password = kwargs.get('SMTP_password')
+		self.SMTP_server = kwargs.get('SMTP_server')
+
+		#parameters for POP3 server
+		self.POP3_server = kwargs.get('POP3_server')
+		self.POP3_password = kwargs.get('POP3_password')
+		self.POP3_account = kwargs.get('POP3_account')
+		
+class SMTP(Message, User):
+
+	def __init__(self, SMTP_port=25, **kwargs):
+		'''default port = 25'''
+		self.port = SMTP_port
+		super().__init__(**kwargs)
+		if not self.SMTP_server:
+			raise FieldMissing('SMTP_server')
+		if not self.SMTP_account:
+			raise FieldMissing('SMTP_account')
+		if not self.SMTP_password:
+			raise FieldMissing('SMTP_password')
+
 
 	def send_msg(self):
 		'''connect to SMTP server and send the message'''
 		with smtplib.SMTP(self.SMTP_server, self.port) as server:
 			server.starttls()
-			server.login(self.SMTP_account, self.password) 
+			server.login(self.SMTP_account, self.SMTP_password) 
 			server.set_debuglevel(False)
 			server.send_message(self.msg)
 		return 'Success'
+
+class POP3(User):
+
+	def __init__(self, POP3_port=995, **kwargs):
+		self.port = POP3_port
+		super().__init__(**kwargs)
+		if not self.POP3_server:
+			raise FieldMissing('POP3_server')
+		if not self.POP3_account:
+			raise FieldMissing('POP3_account')
+		if not self.POP3_password:
+			raise FieldMissing('POP3_password')
+
+	def retrieve_msg(self):
+		mailbox = poplib.POP3_SSL(self.POP3_server, self.port) 
+		mailbox.user(self.POP3_account)
+		mailbox.pass_(self.POP3_password)
+		num_msg = len(mailbox.list()[1])
+		for i in range(num_msg):
+			for msg in mailbox.retr(i+1)[1]:
+				yield msg
+		mailbox.quit()
+
+	def mailbox_size(self):
+		mailbox = poplib.POP3_SSL(self.POP3_server, self.port)
+		mailbox.user(self.POP3_account)
+		mailbox.pass_(self.POP3_password)
+		stat = mailbox.stat()
+		size = {'message count': stat[0], 'mailbox size': stat[1]}
+		mailbox.quit()
+		return size
+
+
