@@ -10,19 +10,19 @@
 ```shell
 >>>from SMTPEmail import SMTP
 >>>client = SMTP(
-			SMTP_server = <domain> or <IP_address>,
-			SMTP_account = <account_name>,
-			password = <SMTP_password>
-			)
+	SMTP_server = <domain> or <IP_address>,
+	SMTP_account = <account_name>,
+	password = <SMTP_password>
+	)
 >>>client.create_mime(
-					recipient_email_addr='Jane.Doe@jane.com',
-					sender_email_addr='John.Doe@john.com',
-					subject='subject',
-					sender_display_name='John Doe',
-					recipient_display_name='Jane Doe',
-					content_html='<p>hello world</p>',
-					content_text='hello world'
-					)
+	recipient_email_addr='Jane.Doe@jane.com',
+	sender_email_addr='John.Doe@john.com',
+	subject='subject',
+	sender_display_name='John Doe',
+	recipient_display_name='Jane Doe',
+	content_html='<p>hello world</p>',
+	content_text='hello world'
+)
    
 >>>print(client) #print the message
 
@@ -54,15 +54,15 @@ MIME-Version: 1.0
 ```
 #### Retrieve email via POP3
 
->>>messages will be returned in byte object
+>> messages will be returned in byte object
 
 ```shell
 >>>from SMTPEmail import POP3
 >>>client = POP3(
-				POP3_server = <domain> or <IP_address>,
-				POP3_account = <account_name>,
-				POP3_password = <POP3_password>
-			)
+	POP3_server = <domain> or <IP_address>,
+	POP3_account = <account_name>,
+	POP3_password = <POP3_password>
+)
 >>>msgs = client.retrieve_msg()
 
 >>>for msg in msgs:
