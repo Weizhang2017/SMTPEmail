@@ -6,11 +6,16 @@ import smtplib
 import poplib
 import imaplib
 import re
+
 class FieldMissing(Exception):
 	def __init__(self, missing_field):
 		self.err_msg = '{} is missing'.format(missing_field)
 	def __str__(self):
 		return self.err_msg
+
+class IMAPError(Exception):
+	def __init__(self, error):
+		self.err_msg = error
 
 class Message(object):
 
@@ -72,7 +77,7 @@ class User(object):
 		self.IMAP_server = kwargs.get('IMAP_server')
 		self.IMAP_password = kwargs.get('IMAP_password')
 		self.IMAP_account = kwargs.get('IMAP_account')
-		
+	
 class SMTP(Message, User):
 
 	def __init__(self, SMTP_port=25, **kwargs):
@@ -140,14 +145,46 @@ class IMAP(User):
 		if not self.IMAP_password:
 			raise FieldMissing('IMAP_password')
 
-	def retrieve_msg(self):
+	def retrieve_msg(self, mailbox_name='', msg_id=''):
+		#select a mailbox or lablel, return message IDs under the mailbox label
+
 		with imaplib.IMAP4_SSL(self.IMAP_server, self.port)	as mailbox:
 			mailbox.login(self.IMAP_account, self.IMAP_password)
-			status, label = mailbox.list()
-			for ind, item in enumerate(label):
-				item = re.search(r'\"[\w\-\[\]\.\/\s\@\(\)]+\"$', item.decode()).group()
-				options[ind] = item
-				print('{0}. {1}'.format(ind, item))
-			choice = int(input('Please select mailbox label(defualt:INBOX): '))
-			status, messages = mailbox.select()
-			print(messages)
+			if not mailbox_name:
+				status, label = mailbox.list()
+				if status != 'OK':
+					raise IMAPError(label[0].decode())
+				options = {}
+				for ind, item in enumerate(label):
+					flags, delimiter, mailbox_name = re.compile(r'\((?P<flags>.*?)\) "(?P<delimiter>.*)" (?P<name>.*)').match(item.decode()).groups()
+					options[ind] = mailbox_name
+					print('{0}. {1}'.format(ind, mailbox_name))
+				choice = int(input('Please select a mailbox: '))
+				mailbox_name = options[choice]
+			status, num_msg = mailbox.select(mailbox_name)
+			if status != 'OK':
+				raise IMAPError(num_msg[0].decode())
+			if not msg_id:
+				status, message_id = mailbox.search(None, 'all')
+				if status != 'OK':
+					raise IMAPError(message_id[0].decode())
+				print('message id:', message_id[0].decode())
+				select_msg = input('Please select mail ID to retrieve email(e.g. 1-5,6,7): ')
+				msg_id = []
+				msg_range = False
+				for char in select_msg:
+					if char.isdigit():
+						if msg_range == False:
+							msg_id.append(int(char))
+						elif msg_range == True:
+							msg_id = msg_id + list(range(int(msg_id[-1])+1, int(char)+1))
+							msg_range = False			
+					elif char == '-':
+						msg_range = True
+			for _id in msg_id:
+				status, msg = mailbox.fetch(str(_id), '(RFC822)')
+				if status != 'OK':
+					raise IMAPError(msg)
+				yield msg[0]
+
+

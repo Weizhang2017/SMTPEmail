@@ -54,7 +54,7 @@ MIME-Version: 1.0
 ```
 #### Retrieve email via POP3
 
->> messages will be returned in byte object
+> messages will be returned in byte object
 
 ```shell
 >>>from SMTPEmail import POP3
@@ -72,4 +72,23 @@ MIME-Version: 1.0
 >>>print(client.mailbox_size())
 {'message count': 804, 'mailbox size': 18096539}
 ```
+#### Retrieve email via IMAP
+```shell
+>>>from SMTPEmail import IMAP
+>>>client = IMAP(
+	IMAP_server = <domain> or <IP_address>,
+	IMAP_account = <account_name>,
+	IMAP_password = <IMAP_password>
+)
+#you can select which mailbox to access and which email to retrieve by passing parameters 'mailbox_name' and 'msg_id'
+>>>for msg in client.retrieve_msg(mailbox_name='inbox', msg_id='1,3,5-8,11'):
+	   print(msg)
+#'mailbox_name' and 'msg_id' are optional, the user will be promted to input the two parameters if either is missing
+>>>msgs = client.retrieve_msg()
+0. "INBOX"
+1. "Templates"
+...
+Please select a mailbox:1
+message id: 1 2 3 4 5 6 ...
+Please select mail ID to retrieve email(e.g. 1-5,6,7): 1,3-6
 
