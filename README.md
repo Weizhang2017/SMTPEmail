@@ -12,7 +12,7 @@
 >>>client = SMTP(
 	SMTP_server = <domain> or <IP_address>,
 	SMTP_account = <account_name>,
-	password = <SMTP_password>
+	SPMP_password = <SMTP_password>
 	)
 >>>client.create_mime(
 	recipient_email_addr='Jane.Doe@jane.com',
