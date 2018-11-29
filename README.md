@@ -76,7 +76,7 @@ MIME-Version: 1.0
 
 > Additonal features: 
 1. Specify variable `delete=True` to delete the messages that have been retrieved, default value is `False`
-2. Specify variable `msg_id=all` to retrieve all messages
+2. Specify variable `msg_id='all'` to retrieve all messages
 
 ```shell
 >>>from SMTPEmail import IMAP
