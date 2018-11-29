@@ -145,11 +145,98 @@ class IMAP(User):
 		if not self.IMAP_password:
 			raise FieldMissing('IMAP_password')
 
-	def retrieve_msg(self, mailbox_name='', msg_id=''):
+	def retrieve_msg(self, delete=False, mailbox_name='', msg_id='',
+					search_section='', search_text=''):
 		#select a mailbox or lablel, return message IDs under the mailbox label
+		'''Possible sections:
+
+		BCC <string>
+         Messages that contain the specified string in the envelope
+         structure's BCC field.
+
+		BEFORE <date>
+		 Messages whose internal date (disregarding time and timezone)
+		 is earlier than the specified date.
+
+		BODY <string>
+		 Messages that contain the specified string in the body of the
+		 message.
+
+		CC <string>
+		 Messages that contain the specified string in the envelope
+		 structure's CC field.
+
+		FROM <string>
+		 Messages that contain the specified string in the envelope
+		 structure's FROM field.
+
+		HEADER <field-name> <string>
+		 Messages that have a header with the specified field-name (as
+		 defined in [RFC-2822]) and that contains the specified string
+		 in the text of the header (what comes after the colon).  If the
+		 string to search is zero-length, this matches all messages that
+		 have a header line with the specified field-name regardless of
+		 the contents.
+
+		KEYWORD <flag>
+		 Messages with the specified keyword flag set.
+
+		LARGER <n>
+		 Messages with an [RFC-2822] size larger than the specified
+		 number of octets.
+	
+		NOT <search-key>
+		 Messages that do not match the specified search key.
+
+		ON <date>
+		 Messages whose internal date (disregarding time and timezone)
+		 is within the specified date.
+		 SENTBEFORE <date>
+		 Messages whose [RFC-2822] Date: header (disregarding time and
+		 timezone) is earlier than the specified date.
+
+		SENTON <date>
+		 Messages whose [RFC-2822] Date: header (disregarding time and
+		 timezone) is within the specified date.
+
+		SENTSINCE <date>
+		 Messages whose [RFC-2822] Date: header (disregarding time and
+		 timezone) is within or later than the specified date.
+
+		SINCE <date>
+		 Messages whose internal date (disregarding time and timezone)
+		 is within or later than the specified date.
+
+		SMALLER <n>
+		 Messages with an [RFC-2822] size smaller than the specified
+		 number of octets.
+
+		SUBJECT <string>
+		 Messages that contain the specified string in the envelope
+		 structure's SUBJECT field.
+
+		TEXT <string>
+		 Messages that contain the specified string in the header or
+		 body of the message.
+
+		TO <string>
+		 Messages that contain the specified string in the envelope
+		 structure's TO field.
+
+		UID <sequence set>
+		 Messages with unique identifiers corresponding to the specified
+		 unique identifier set.  Sequence set ranges are permitted.
+		'''
+
+		if search_section and not search_text:
+			raise FieldMissing('search_text')
+		if not search_section and search_text:
+			raise FieldMissing('search_section')
+		if (search_section or search_text) and msg_id:
+			raise 'Unexpected field, remove msg_id or search_section and search_text'
 
 		with imaplib.IMAP4_SSL(self.IMAP_server, self.port)	as mailbox:
-			mailbox.login(self.IMAP_account, self.IMAP_password)
+			mailbox.login(self.IMAP_account, self. IMAP_password)
 			if not mailbox_name:
 				status, label = mailbox.list()
 				if status != 'OK':
@@ -164,27 +251,93 @@ class IMAP(User):
 			status, num_msg = mailbox.select(mailbox_name)
 			if status != 'OK':
 				raise IMAPError(num_msg[0].decode())
-			if not msg_id:
+			if (not msg_id or msg_id == 'all') and not search_section and not search_text:
 				status, message_id = mailbox.search(None, 'all')
 				if status != 'OK':
 					raise IMAPError(message_id[0].decode())
-				print('message id:', message_id[0].decode())
-				select_msg = input('Please select mail ID to retrieve email(e.g. 1-5,6,7): ')
-				msg_id = []
-				msg_range = False
-				for char in select_msg:
-					if char.isdigit():
-						if msg_range == False:
-							msg_id.append(int(char))
-						elif msg_range == True:
-							msg_id = msg_id + list(range(int(msg_id[-1])+1, int(char)+1))
-							msg_range = False			
-					elif char == '-':
-						msg_range = True
-			for _id in msg_id:
-				status, msg = mailbox.fetch(str(_id), '(RFC822)')
+				if not message_id[0]:
+					raise ValueError('No message found in mailbox')
+				if msg_id == 'all':
+					_msg_id = message_id[0].decode().split(' ')
+				else:
+					print('message id:', message_id[0].decode())
+					select_msg = input('Please select mail ID to retrieve email(e.g. 1-5,6,7): ')
+					_msg_id = []
+					msg_range = False
+					for char in select_msg:
+						if char.isdigit():
+							if msg_range == False:
+								_msg_id.append(int(char))
+							elif msg_range == True:
+								_msg_id = _msg_id + list(range(int(_msg_id[-1])+1, int(char)+1))
+								msg_range = False			
+						elif char == '-':
+							msg_range = True
+
+			if not msg_id and search_section and search_text:
+				status, message_id = mailbox.search(None, search_section, '"{}"'.format(search_text))
+				if status != 'OK':
+					raise IMAPError(message_id[0].decode())
+				if not message_id[0]:
+					raise ValueError('No message found in mailbox')
+				_msg_id = message_id[0].decode().split(' ')
+
+			for _id in _msg_id:
+				status, msg = mailbox.fetch(_id, '(RFC822)')
 				if status != 'OK':
 					raise IMAPError(msg)
+				if delete == True:
+					mailbox.store(_id, '+FLAGS', '\\Deleted')
 				yield msg[0]
+			mailbox.expunge()
+
+
+
+	def list_mailbox(self):
+		#list mailbox labels
+		with imaplib.IMAP4_SSL(self.IMAP_server, self.port)	as mailbox:
+			mailbox.login(self.IMAP_account, self.IMAP_password)
+			status, label = mailbox.list()
+			if status != 'OK':
+				raise IMAPError(label[0].decode())
+			else:
+				mailbox = {}
+				for ind, item in enumerate(label):
+					flags, delimiter, mailbox_name = re.compile(r'\((?P<flags>.*?)\) "(?P<delimiter>.*)" (?P<name>.*)').match(item.decode()).groups()
+					mailbox[ind] = mailbox_name
+				return mailbox
+
+	def list_msg(self, mailbox_name):
+		#list message indexes in a mailbox
+		with imaplib.IMAP4_SSL(self.IMAP_server, self.port)	as mailbox:
+			mailbox.login(self.IMAP_account, self.IMAP_password)
+			status, num_msg = mailbox.select(mailbox_name)
+			if status != 'OK':
+				raise IMAPError(num_msg[0].decode())
+			else:
+				status, message_id = mailbox.search(None, 'all')
+				if status != 'OK':
+					raise IMAPError(message_id[0].decode())
+				else:
+					return message_id
+
+
+
+	def _search_query():
+	    query = []
+	    for name, value in kwargs.items():
+	        if value is not None:
+	            if isinstance(value, datetime.date):
+	                value = value.strftime('%d-%b-%Y')
+	            if isinstance(value, str) and '"' in value:
+	                value = value.replace('"', "'")
+	            query.append(imap_attribute_lookup[name].format(value))
+
+	    if query:
+	        return " ".join(query)
+
+	    return "(ALL)"
+
+
 
 

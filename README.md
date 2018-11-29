@@ -73,6 +73,11 @@ MIME-Version: 1.0
 {'message count': 804, 'mailbox size': 18096539}
 ```
 #### Retrieve email via IMAP
+
+> Additonal features: 
+1. Specify variable `delete=True` to delete the messages that have been retrieved, default value is `False`
+2. Specify variable `msg_id=all` to retrieve all messages
+
 ```shell
 >>>from SMTPEmail import IMAP
 >>>client = IMAP(
@@ -91,4 +96,12 @@ MIME-Version: 1.0
 Please select a mailbox:1
 message id: 1 2 3 4 5 6 ...
 Please select mail ID to retrieve email(e.g. 1-5,6,7): 1,3-6
+```
+#### Search emails via IMAP
+>Refer to [RFC3501](https://tools.ietf.org/html/rfc3501#section-6.4.4) for more search options
+```shell
+>>>for msg in client.retrieve_msg(mailbox_name='inbox', search_section='body', search_text='test_search'):
+		print(msg)
+```
+
 
