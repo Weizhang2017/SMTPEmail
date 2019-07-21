@@ -52,6 +52,7 @@ MIME-Version: 1.0
 
 >>>client.send_msg()
 ```
+>Add customized email header by specify `custom_header={'field': value}` in `SMTPEmail.createmine `
 #### Retrieve email via POP3
 
 > messages will be returned in byte object
