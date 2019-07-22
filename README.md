@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Weizhang2017/SMTPEmail.svg?branch=master)](https://travis-ci.org/Weizhang2017/SMTPEmail)
+
 ## A simple script to send MIME message via SMTP server and retrieve messages via POP3
 
 ### Installation ```pip install SMTPEmail```
