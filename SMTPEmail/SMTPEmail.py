@@ -338,6 +338,3 @@ class IMAP(User):
 
 	    return "(ALL)"
 
-
-
-
