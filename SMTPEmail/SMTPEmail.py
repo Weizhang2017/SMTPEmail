@@ -131,12 +131,12 @@ class POP3(User):
 			size = {'message count': stat[0], 'mailbox size': stat[1]}
 		return size
 
-	def retrieve_entire_msg(self):
+	def retrieve_entire_msg(self, start:int=1, end=int()):
 		with self.mailbox as _mailbox:
 			num_msg = len(_mailbox.list()[1])
-			for i in range(num_msg):
+			for i in range(start, end+1 if end and end<num_msg else num_msg+1):
 				msg = ''
-				for line in _mailbox.retr(i+1)[1]:
+				for line in _mailbox.retr(i)[1]:
 					msg += line.decode() + '\n'
 				yield msg
 
