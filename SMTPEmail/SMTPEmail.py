@@ -6,6 +6,7 @@ import smtplib
 import poplib
 import imaplib
 import re
+import time
 
 class FieldMissing(Exception):
 	def __init__(self, missing_field):
@@ -113,25 +114,32 @@ class POP3(User):
 			raise FieldMissing('POP3_account')
 		if not self.POP3_password:
 			raise FieldMissing('POP3_password')
+		self.mailbox = POP3Connect(self.POP3_server, POP3_port,
+						self.POP3_account, self.POP3_password)
+
 
 	def retrieve_msg(self):
-		mailbox = poplib.POP3_SSL(self.POP3_server, self.port) 
-		mailbox.user(self.POP3_account)
-		mailbox.pass_(self.POP3_password)
-		num_msg = len(mailbox.list()[1])
-		for i in range(num_msg):
-			for msg in mailbox.retr(i+1)[1]:
-				yield msg
-		mailbox.quit()
+		with self.mailbox as _mailbox:
+			num_msg = len(_mailbox.list()[1])
+			for i in range(num_msg):
+				for msg in _mailbox.retr(i+1)[1]:
+					yield msg
 
 	def mailbox_size(self):
-		mailbox = poplib.POP3_SSL(self.POP3_server, self.port)
-		mailbox.user(self.POP3_account)
-		mailbox.pass_(self.POP3_password)
-		stat = mailbox.stat()
-		size = {'message count': stat[0], 'mailbox size': stat[1]}
-		mailbox.quit()
+		with self.mailbox as _mailbox:
+			stat = _mailbox.stat()
+			size = {'message count': stat[0], 'mailbox size': stat[1]}
 		return size
+
+	def retrieve_entire_msg(self):
+		with self.mailbox as _mailbox:
+			num_msg = len(_mailbox.list()[1])
+			for i in range(num_msg):
+				msg = ''
+				for line in _mailbox.retr(i+1)[1]:
+					msg += line.decode() + '\n'
+				yield msg
+
 
 #retrieve messages via SSL enabled IMAP
 class IMAP(User):
@@ -338,3 +346,29 @@ class IMAP(User):
 
 	    return "(ALL)"
 
+class POP3Connect:
+	'''connect to pop3 server with context manager'''
+	def __init__(self, host, port, account, password, callbackOnExit=None, waitingTime=0):
+		self.host = host
+		self.port = port
+		self.account = account
+		self.password = password
+		self.mailbox = None
+		self.callbackOnExit = callbackOnExit
+		self.waitingTime = waitingTime
+
+	def __enter__(self):
+		if self.mailbox is not None:
+			raise RuntimeError('Already connected')
+		self.mailbox = poplib.POP3_SSL(self.host, self.port) 
+		self.mailbox.user(self.account)
+		self.mailbox.pass_(self.password)
+
+		return self.mailbox
+
+	def __exit__(self, exc_ty, exc_val, tb):
+		self.mailbox.quit()
+		self.mailbox = None
+		time.sleep(self.waitingTime)
+		if self.callbackOnExit:
+			self.callbackOnExit(f'{exc_ty}, {exc_val}, {tb}')
