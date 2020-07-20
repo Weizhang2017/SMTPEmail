@@ -44,7 +44,7 @@ class Message(object):
 		self.msg['From'] = Address(display_name=sender_display_name, addr_spec=sender_email_addr)
 		self.msg['To'] = Address(display_name=recipient_display_name, addr_spec=recipient_email_addr)
 		self.msg['Date'] = localtime()
-		self.msg.add_header('Message-Id', message_id[1:-1])
+		self.msg.add_header('Message-ID', '<'+message_id[1:-1]+'>')
 		if custom_header:
 			for key, value in custom_header.items():
 				self.msg.add_header(key, value)

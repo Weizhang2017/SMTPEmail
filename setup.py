@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="SMTPEmail",
-    version="0.4.1",
+    version="0.4.2",
     author="Zhang Wei",
     author_email="zhangw1.2011@gmail.com",
     description="Send MIME messages via SMTP server and retrieve messages via POP3 and IMAP",
